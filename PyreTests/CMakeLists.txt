@@ -1,4 +1,5 @@
 add_executable(PyreTests
+	"entity/EntityTraitsTests.cpp"
 )
 
 target_link_libraries(PyreTests PRIVATE Pyre)
