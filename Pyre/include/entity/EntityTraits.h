@@ -8,6 +8,10 @@ namespace pyre::internal
 	template<typename>
 	struct EntityTraitsConfig;
 
+	// For EntityTraits to work properly, when choosing
+	// uint size for IndexType and GenerationType always choose
+	// the smallest one that fits the corresponding bit width.
+
 	template<>
 	struct EntityTraitsConfig<uint32_t>
 	{
@@ -16,8 +20,8 @@ namespace pyre::internal
 		using IndexType = uint32_t;
 		using GenerationType = uint16_t;
 
-		static constexpr IndexType kIndexBitWidth = 20;
-		static constexpr GenerationType kGenerationBitWidth = 12;
+		static constexpr std::uint8_t kIndexBitWidth = 20;
+		static constexpr std::uint8_t kGenerationBitWidth = 12;
 	};
 
 	template<>
@@ -28,8 +32,8 @@ namespace pyre::internal
 		using IndexType = uint64_t;
 		using GenerationType = uint32_t;
 
-		static constexpr IndexType kIndexBitWidth = 40;
-		static constexpr GenerationType kGenerationBitWidth = 24;
+		static constexpr std::uint8_t kIndexBitWidth = 40;
+		static constexpr std::uint8_t kGenerationBitWidth = 24;
 	};
 
 	template<typename TraitsConfig>
@@ -62,10 +66,12 @@ namespace pyre::internal
 
 		static constexpr ValueType Pack(IndexType index, GenerationType generation)
 		{
-			// Use '<' (not '<=') when checking for overflow against a mask
-			// for both index and generation, because if either of the two is using
-			// the full range of its type '<=' will always be true and the check
-			// will never trigger.
+			// Use '<' (not '<='), when checking for overflow against a mask
+			// for both index and generation, because if the check uses '<='
+			// and index or generation reaches the max value before wrapping to 0,
+			// it's not possible to detect the overflow. This way the last valid
+			// number is lost, but this allows overflow detection and having
+			// sentinels like kNullIndex.
 
 			assert(index < kIndexMask &&
 				"EntityTraits::Pack: index overflows the reserved range, in release build will truncate");
@@ -73,8 +79,9 @@ namespace pyre::internal
 			assert(generation < kGenerationMask &&
 				"EntityTraits::Pack: generation overflows the reserved range, in release build will truncate");
 
-			// Cast index to ValueType before shifting by kGenerationBitWidth, because
-			// if kGenerationBitWidth >= kIndexBitWidth is UB.
+			// Cast index to ValueType before shifting by kGenerationBitWidth,
+			// because if the type of generation is >= than the type of index,
+			// the shift is UB.
 
 			return static_cast<ValueType>(index & kIndexMask) << TraitsConfig::kGenerationBitWidth | (generation & kGenerationMask);
 		}
