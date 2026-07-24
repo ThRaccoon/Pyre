@@ -1,6 +1,7 @@
 #pragma once
 
 #include <bit>
+#include <cassert>
 #include <cstdint>
 
 namespace pyre::internal
@@ -56,10 +57,13 @@ namespace pyre::internal
 		static constexpr std::uint8_t kIndexBitWidth = std::popcount(kIndexMask);
 		static constexpr std::uint8_t kGenerationBitWidth = std::popcount(kGenerationMask);
 
-		static constexpr IndexType kTombstone = kIndexMask;
+		static constexpr IndexType kIndexTombstone = kIndexMask;
 
 		static constexpr ValueType Pack(IndexType index, GenerationType generation)
 		{
+			assert(index < kIndexMask && "EntityTraits::Pack: index collides with tombstone value");
+			assert(generation <= kGenerationMask && "EntityTraits::Pack: generation overflow");
+
 			return static_cast<ValueType>(index & kIndexMask) << kGenerationBitWidth | (generation & kGenerationMask);
 		}
 
